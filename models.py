@@ -1,4 +1,6 @@
 from flask_sqlalchemy import SQLAlchemy
+from sqlalchemy import String
+from sqlalchemy.dialects.postgresql import ARRAY
 from datetime import datetime
 db = SQLAlchemy()
 #----------------------------------------------------------------------------#
@@ -15,12 +17,13 @@ class Venue(db.Model):
     state = db.Column(db.String(120))
     address = db.Column(db.String(120))
     phone = db.Column(db.String(120))
-    image_link = db.Column(db.String(500))
+    image_link = db.Column(db.String)
     facebook_link = db.Column(db.String(120))
-    website = db.Column(db.String(500))
+    website = db.Column(db.String)
     seeking_talent = db.Column(db.Boolean, default=False)
-    shows = db.relationship('Show', backref='venues', lazy=False)
-    genres = db.Column(db.PickleType, default=[])
+    shows = db.relationship('Show', backref='venues',
+                            lazy=False, cascade='all, delete-orphan')
+    genres = db.Column(ARRAY(String()))
     seeking_description = db.Column(db.Text)
 
     def __init__(self, name, city, state, address, phone, image_link, facebook_link, website, seeking_talent, genres, seeking_description):
@@ -36,67 +39,24 @@ class Venue(db.Model):
         self.seeking_description = seeking_description
         self.genres = genres
 
-    # @property
-    # def upcoming_shows(self):
-    #     upcoming_shows = [
-    #         show for show in self.shows if show.start_time > datetime.now()]
-    #     return upcoming_shows
+    def __repr__(self):
+        return f'<Venue ID: {self.id}, name: {self.name}>'
 
-    # @property
-    # def num_upcoming_shows(self):
-    #     return len(self.upcoming_shows)
+    def upcoming_shows(self):
+        upcoming_shows = [
+            show for show in self.shows if show.start_time > datetime.now()]
+        return upcoming_shows
 
-    # @property
-    # def past_shows(self):
-    #     past_shows = [
-    #         show for show in self.shows if show.start_time < datetime.now()]
-    #     return past_shows
+    def num_upcoming_shows(self):
+        return len(self.upcoming_shows())
 
-    # @property
-    # def num_past_shows(self):
-    #     return len(self.past_shows)
+    def past_shows(self):
+        past_shows = [
+            show for show in self.shows if show.start_time < datetime.now()]
+        return past_shows
 
-    # @property
-    # def serialize_with_upcoming_shows_count(self):
-    #      return {'id': self.id,
-    #             'name': self.name,
-    #             'city': self.city,
-    #             'state': self.state,
-    #             'phone': self.phone,
-    #             'address': self.address,
-    #             'image_link': self.image_link,
-    #             'facebook_link': self.facebook_link,
-    #             'seeking_talent': self.seeking_talent,
-    #             'seeking_description': self.seeking_description,
-    #             'website': self.website,
-    #             'num_shows': Show.query.filter(Show.start)
-
-    @property
-    def serialize_with_shows_details(self):
-        return {'id': self.id,
-                'name': self.name,
-                'city': self.city,
-                'state': self.state,
-                'phone': self.phone,
-                'address': self.address,
-                'image_link': self.image_link,
-                'facebook_link': self.facebook_link,
-                'seeking_talent': self.seeking_talent,
-                'seeking_description': self.seeking_description,
-                'website': self.website,
-                'upcoming_shows': [show for show in self.shows if show.start_time > datetime.now()(
-
-                    Show.venue_id == self.id).all()],
-                'past_shows': [show for show in self.shows if show.start_time < datetime.now()(
-
-                    Show.venue_id == self.id).all()],
-                'upcoming_shows_count': len(Show.query.filter(
-                    Show.start_time > datetime.datetime.now(),
-                    Show.venue_id == self.id).all()),
-                'past_shows_count': len(Show.query.filter(
-                    Show.start_time < datetime.datetime.now(),
-                    Show.venue_id == self.id).all())
-                }
+    def num_past_shows(self):
+        return len(self.past_shows())
 
     # TODO: implement any missing fields, as a database migration using Flask-Migrate
 
@@ -109,34 +69,46 @@ class Artist(db.Model):
     city = db.Column(db.String(120))
     state = db.Column(db.String(120))
     phone = db.Column(db.String(120))
-    website = db.Column(db.String(500))
-    genres = db.Column(db.ARRAY(db.String()))
-    image_link = db.Column(db.String(500))
+    website = db.Column(db.String)
+    genres = db.Column(ARRAY(String()))
+    image_link = db.Column(db.String)
     facebook_link = db.Column(db.String(120))
-    seeking_venue = db.Column(db.Boolean)
+    seeking_venue = db.Column(db.Boolean, default=False)
     seeking_description = db.Column(db.String(500))
-    shows = db.relationship('Show', backref='artists', lazy=True)
+    shows = db.relationship('Show', backref='artists',
+                            lazy=True, cascade='all, delete-orphan')
     created_on = db.Column(db.DateTime, default=datetime.utcnow)
 
-    @property
+    def __init__(self, name, city, state, phone, image_link, facebook_link, website, seeking_venue, genres, seeking_description):
+        self.name = name
+        self.city = city
+        self.state = state
+        self.phone = phone
+        self.image_link = image_link
+        self.facebook_link = facebook_link
+        self.website = website
+        self.seeking_venue = seeking_venue
+        self.seeking_description = seeking_description
+        self.genres = genres
+
+    def __repr__(self):
+        return f'<ARTIST ID: {self.id}, name: {self.name}>'
+
     def upcoming_shows(self):
         upcoming_shows = [
             show for show in self.shows if show.start_time > datetime.now()]
         return upcoming_shows
 
-    @property
     def num_upcoming_shows(self):
-        return len(self.upcoming_shows)
+        return len(self.upcoming_shows())
 
-    @property
     def past_shows(self):
         past_shows = [
             show for show in self.shows if show.start_time < datetime.now()]
         return past_shows
 
-    @property
     def num_past_shows(self):
-        return len(self.past_shows)
+        return len(self.past_shows())
 
     # TODO: implement any missing fields, as a database migration using Flask-Migrate
 
@@ -152,3 +124,8 @@ class Show(db.Model):
         'artists.id'), nullable=False)
     venue_id = db.Column(db.Integer, db.ForeignKey(
         'venues.id'), nullable=False)
+    venue = db.relationship(
+        'Venue', backref=db.backref('showss', cascade='all, delete'))
+
+    def __repr__(self):
+        return f'<Show ID: {self.id}, venue_id: {self.venue_id}, artist_id: {self.artist_id}>'
